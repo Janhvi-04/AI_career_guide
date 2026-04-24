@@ -56,7 +56,7 @@ export function Hero() {
           </div>
         </div>
 
-        <div className="relative animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
+        <div className="relative animate-fade-in-up mt-10 lg:mt-0" style={{ animationDelay: "0.2s" }}>
           <div className="absolute -inset-10 bg-gradient-to-tr from-primary/30 via-accent/20 to-transparent blur-3xl animate-pulse-glow" />
           <div className="relative animate-float">
             <img
@@ -66,19 +66,19 @@ export function Hero() {
               height={1024}
               className="w-full h-auto rounded-3xl"
             />
-          </div>
 
-          {/* Floating stat cards */}
-          <div className="absolute top-8 -left-4 glass border-gradient rounded-2xl px-4 py-3 text-sm animate-float" style={{ animationDelay: "1s" }}>
-            <div className="text-xs text-muted-foreground">Match Score</div>
-            <div className="font-display font-bold text-2xl text-gradient">85%</div>
-          </div>
-          <div className="absolute bottom-8 -right-2 glass border-gradient rounded-2xl px-4 py-3 text-sm animate-float" style={{ animationDelay: "2s" }}>
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-accent animate-pulse-glow" />
-              <div>
-                <div className="text-xs text-muted-foreground">Recommended</div>
-                <div className="font-medium">Full Stack Dev</div>
+            {/* Floating stat cards — positioned inside image bounds to prevent overlap */}
+            <div className="absolute top-4 left-4 sm:top-6 sm:left-6 glass border-gradient rounded-2xl px-4 py-3 text-sm animate-float z-10" style={{ animationDelay: "1s" }}>
+              <div className="text-xs text-muted-foreground">Match Score</div>
+              <div className="font-display font-bold text-2xl text-gradient">85%</div>
+            </div>
+            <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 glass border-gradient rounded-2xl px-4 py-3 text-sm animate-float z-10" style={{ animationDelay: "2s" }}>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-accent animate-pulse-glow" />
+                <div>
+                  <div className="text-xs text-muted-foreground">Recommended</div>
+                  <div className="font-medium">Full Stack Dev</div>
+                </div>
               </div>
             </div>
           </div>
