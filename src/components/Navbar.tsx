@@ -15,7 +15,7 @@ export function Navbar() {
   return (
     <header className="fixed top-0 inset-x-0 z-50">
       <div className="mx-auto max-w-7xl px-6 py-4">
-        <nav className="glass border-gradient rounded-2xl px-5 py-3 flex items-center justify-between">
+        <nav className="glass border-gradient rounded-2xl px-4 py-3 lg:px-5 flex items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-2 group">
             <div className="relative">
               <div className="absolute inset-0 rounded-lg bg-primary/40 blur-md group-hover:blur-lg transition-all" />
@@ -23,12 +23,12 @@ export function Navbar() {
                 <GraduationCap className="h-5 w-5 text-background" />
               </div>
             </div>
-            <span className="font-display font-bold text-lg">
+            <span className="font-display font-bold text-base leading-none whitespace-nowrap sm:text-lg">
               CareerGuide <span className="text-gradient">AI</span>
             </span>
           </Link>
 
-          <ul className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
+          <ul className="hidden lg:flex items-center gap-8 text-sm text-muted-foreground">
             {links.map((l) => (
               <li key={l.label}>
                 <a href={l.href} className="hover:text-foreground transition-colors relative group">
@@ -39,7 +39,7 @@ export function Navbar() {
             ))}
           </ul>
 
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-3 shrink-0">
             <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Log in
             </button>
@@ -48,13 +48,13 @@ export function Navbar() {
             </button>
           </div>
 
-          <button onClick={() => setOpen(!open)} className="md:hidden text-foreground">
+          <button onClick={() => setOpen(!open)} className="lg:hidden shrink-0 text-foreground" aria-label={open ? "Close menu" : "Open menu"}>
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </nav>
 
         {open && (
-          <div className="md:hidden mt-2 glass rounded-2xl p-5 animate-fade-in-up">
+          <div className="lg:hidden mt-2 glass rounded-2xl p-5 animate-fade-in-up">
             <ul className="space-y-3">
               {links.map((l) => (
                 <li key={l.label}>
