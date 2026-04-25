@@ -66,18 +66,19 @@ export function Hero() {
               height={1024}
               className="w-full h-auto rounded-3xl"
             />
+          </div>
 
-            {/* Floating stat cards — positioned inside image bounds to prevent overlap */}
-            <div className="absolute top-4 left-4 sm:top-6 sm:left-6 glass border-gradient rounded-2xl px-4 py-3 text-sm animate-float z-10" style={{ animationDelay: "1s" }}>
+          <div className="relative z-10 mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="glass border-gradient rounded-2xl px-4 py-3 text-sm">
               <div className="text-xs text-muted-foreground">Match Score</div>
               <div className="font-display font-bold text-2xl text-gradient">85%</div>
             </div>
-            <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 glass border-gradient rounded-2xl px-4 py-3 text-sm animate-float z-10" style={{ animationDelay: "2s" }}>
+            <div className="glass border-gradient rounded-2xl px-4 py-3 text-sm">
               <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-accent animate-pulse-glow" />
-                <div>
+                <div className="h-2 w-2 shrink-0 rounded-full bg-accent animate-pulse-glow" />
+                <div className="min-w-0">
                   <div className="text-xs text-muted-foreground">Recommended</div>
-                  <div className="font-medium">Full Stack Dev</div>
+                  <div className="font-medium truncate">Full Stack Dev</div>
                 </div>
               </div>
             </div>
