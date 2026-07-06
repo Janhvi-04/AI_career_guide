@@ -1,5 +1,5 @@
 import { createFileRoute,Link } from '@tanstack/react-router'
-import * as pdfjsLib from 'pdfjs-dist/build/pdf'
+import * as pdfjsLib from 'pdfjs-dist'
 import mammoth from 'mammoth'
 import { useState } from 'react'
 
