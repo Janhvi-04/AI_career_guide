@@ -729,7 +729,7 @@ app.use("/api/auth", authRoutes);
 app.get("/", (req, res) => {
   res.send("API is running...");
 });
-const PORT=5000;
+const PORT= process.env.PORT || 5000;
 mongoose.connect(process.env.MONGO_URL)
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB Connection Error:", err));
