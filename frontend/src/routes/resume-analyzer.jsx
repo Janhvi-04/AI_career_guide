@@ -1,9 +1,9 @@
 import { createFileRoute,Link } from '@tanstack/react-router'
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs'
+import * as pdfjsLib from 'pdfjs-dist/build/pdf'
 import mammoth from 'mammoth'
 import { useState } from 'react'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/legacy/build/pdf.worker.min.mjs`
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 export const Route = createFileRoute('/resume-analyzer')({
   component: ResumeAnalyzer,
