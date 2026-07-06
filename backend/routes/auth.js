@@ -19,6 +19,11 @@ router.post("/signup",async(req,res)=>{
             password: hashedPassword
         })
         await user.save();
+        const token = jwt.sign(
+            { id: user._id },
+            process.env.JWT_SECRET,
+            { expiresIn: "1d" }
+        )
         res.status(201).json({message:"Signup successful"})
     } catch (err) {
         res.status(500).json({message:"Server error"})
@@ -41,12 +46,47 @@ router.post("/login",async(req,res)=>{
             {expiresIn:"1d"}
         )
         res.json({
-            message:"Login successful",token
+            message:"Login successful",token,
+            user:{name:user.name,email:user.email},
+            user_profile: {
+                role: user.role || "",
+                dob: user.dob || "",
+                gender: user.gender || "Female",
+                academicStatus: user.academicStatus || "",
+                projects: user.projects || [],
+                skills: user.skills || []
+            }
         })
     } catch (err) {
         res.status(500).json({message:"Server error"})
     }
 })
+router.put("/update-profile", async (req, res) => {
+    try {
+        const { email, role, dob, gender, academicStatus, projects, skills } = req.body;
+        const updatedUser = await User.findOneAndUpdate(
+            { email },
+            { role, dob, gender, academicStatus, projects, skills },
+            { new: true }
+        );
+        if (!updatedUser) {
+            return res.status(404).json({ message: "User context not found" });
+        }
+        res.json({
+            message: "Profile saved to database successfully",
+            user_profile: {
+                role: updatedUser.role,
+                dob: updatedUser.dob,
+                gender: updatedUser.gender,
+                academicStatus: updatedUser.academicStatus,
+                projects: updatedUser.projects,
+                skills: updatedUser.skills
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ message: "Database update error" });
+    }
+});
 router.post("/reset-password/:token", async (req, res) => {
   try {
     const { token } = req.params;
