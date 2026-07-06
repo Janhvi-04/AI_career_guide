@@ -1,8 +1,5 @@
 import { createFileRoute,Link } from '@tanstack/react-router'
-import mammoth from 'mammoth'
-import { useState } from 'react'
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+import { useState,useEffect } from 'react'
 
 export const Route = createFileRoute('/resume-analyzer')({
   component: ResumeAnalyzer,
@@ -15,6 +12,8 @@ function ResumeAnalyzer() {
   const [loading,setLoading]=useState(false)
   const [loadingText,setLoadingText]=useState("")
   const [errorMessage,setErrorMessage]=useState("")
+  const [pdfjsLib, setPdfjsLib] = useState(null)
+  const [mammothInstance, setMammothInstance] = useState(null)
   useEffect(() => {
     import('pdfjs-dist').then((pdfjs) => {
       // Use the standard cloudflare worker to prevent bundler asset tracing issues
@@ -23,6 +22,9 @@ function ResumeAnalyzer() {
     }).catch(err => {
       console.error("Failed to dynamically load PDF worker", err);
     });
+    import('mammoth').then((mammothModule) => {
+      setMammothInstance(mammothModule);
+    }).catch(err => console.error("Failed to load Word Doc engine:", err));
   }, []);
   const extractTextFromPDF=async(arrayBuffer)=>{
     if (!pdfjsLib) {
@@ -40,7 +42,7 @@ function ResumeAnalyzer() {
     return fulltext
   }
   const extractTextFromDocx=async(arrayBuffer)=>{
-    const result=await mammoth.extractRawText({arrayBuffer})
+    const result=await mammothInstance.extractRawText({arrayBuffer})
     return result.value
   }
   const handleAnalyzeResume=async(e)=>{
