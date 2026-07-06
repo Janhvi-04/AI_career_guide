@@ -67,7 +67,14 @@ function Signup() {
         toast.error(data.message);
       } else {
         toast.success("Signup sucessful")
-        navigate({to:"/login"});
+        if(data.token) {
+          localStorage.setItem('token',data.token)
+        }
+        const userPayload = data.user || { name: form.name, email: form.email };
+        localStorage.setItem('user',JSON.stringify(userPayload))
+        localStorage.removeItem('user_profile')
+        window.dispatchEvent(new Event("storage_update"))
+        navigate({to:"/profile"});
       }
     } catch (err) {
       toast.error("Server error")

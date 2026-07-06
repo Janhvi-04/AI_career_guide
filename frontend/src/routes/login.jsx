@@ -33,6 +33,22 @@ function Login() {
             } else {
                 toast.success("Login successful")
                 localStorage.setItem("token", data.token);
+                localStorage.setItem("user",JSON.stringify(data.user));
+                if (data.user_profile) {
+                    let profileToSave=data.user_profile;
+                    if (!profileToSave.profileAiAnalyzed && data.aiAnalysis) {
+                        profileToSave = buildEnrichedProfile(profileToSave, data.aiAnalysis);
+                    } else if (!profileToSave.profileAiAnalyzed) {
+                        profileToSave={
+                            ...profileToSave,
+                            skills:profileToSave.skills || [],
+                            projects:profileToSave.projects || [],
+                            profileAiAnalyzed:false
+                        }
+                    }
+                    localStorage.setItem("user_profile",JSON.stringify(profileToSave))
+                }
+                window.dispatchEvent(new Event("storage_update"))
                 navigate({to:"/dashboard"})
             }
         } catch (err) {

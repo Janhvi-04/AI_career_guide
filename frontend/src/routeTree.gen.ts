@@ -9,18 +9,56 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SkillGapRouteImport } from './routes/skill-gap'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as RoadmapRouteImport } from './routes/roadmap'
+import { Route as ResumeAnalyzerRouteImport } from './routes/resume-analyzer'
+import { Route as ResourcesRouteImport } from './routes/resources'
+import { Route as RecommendationRouteImport } from './routes/recommendation'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LearnMoreRouteImport } from './routes/learn-more'
+import { Route as JobInsightsRouteImport } from './routes/job-insights'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as AdvisorRouteImport } from './routes/advisor'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResetPasswordTokenRouteImport } from './routes/reset-password.$token'
 
+const SkillGapRoute = SkillGapRouteImport.update({
+  id: '/skill-gap',
+  path: '/skill-gap',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RoadmapRoute = RoadmapRouteImport.update({
+  id: '/roadmap',
+  path: '/roadmap',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResumeAnalyzerRoute = ResumeAnalyzerRouteImport.update({
+  id: '/resume-analyzer',
+  path: '/resume-analyzer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResourcesRoute = ResourcesRouteImport.update({
+  id: '/resources',
+  path: '/resources',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecommendationRoute = RecommendationRouteImport.update({
+  id: '/recommendation',
+  path: '/recommendation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -33,6 +71,11 @@ const LearnMoreRoute = LearnMoreRouteImport.update({
   path: '/learn-more',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JobInsightsRoute = JobInsightsRouteImport.update({
+  id: '/job-insights',
+  path: '/job-insights',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
@@ -41,6 +84,11 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdvisorRoute = AdvisorRouteImport.update({
+  id: '/advisor',
+  path: '/advisor',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -62,32 +110,56 @@ const ResetPasswordTokenRoute = ResetPasswordTokenRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/advisor': typeof AdvisorRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/job-insights': typeof JobInsightsRoute
   '/learn-more': typeof LearnMoreRoute
   '/login': typeof LoginRoute
+  '/profile': typeof ProfileRoute
+  '/recommendation': typeof RecommendationRoute
+  '/resources': typeof ResourcesRoute
+  '/resume-analyzer': typeof ResumeAnalyzerRoute
+  '/roadmap': typeof RoadmapRoute
   '/signup': typeof SignupRoute
+  '/skill-gap': typeof SkillGapRoute
   '/reset-password/$token': typeof ResetPasswordTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/advisor': typeof AdvisorRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/job-insights': typeof JobInsightsRoute
   '/learn-more': typeof LearnMoreRoute
   '/login': typeof LoginRoute
+  '/profile': typeof ProfileRoute
+  '/recommendation': typeof RecommendationRoute
+  '/resources': typeof ResourcesRoute
+  '/resume-analyzer': typeof ResumeAnalyzerRoute
+  '/roadmap': typeof RoadmapRoute
   '/signup': typeof SignupRoute
+  '/skill-gap': typeof SkillGapRoute
   '/reset-password/$token': typeof ResetPasswordTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/advisor': typeof AdvisorRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/job-insights': typeof JobInsightsRoute
   '/learn-more': typeof LearnMoreRoute
   '/login': typeof LoginRoute
+  '/profile': typeof ProfileRoute
+  '/recommendation': typeof RecommendationRoute
+  '/resources': typeof ResourcesRoute
+  '/resume-analyzer': typeof ResumeAnalyzerRoute
+  '/roadmap': typeof RoadmapRoute
   '/signup': typeof SignupRoute
+  '/skill-gap': typeof SkillGapRoute
   '/reset-password/$token': typeof ResetPasswordTokenRoute
 }
 export interface FileRouteTypes {
@@ -95,52 +167,126 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/advisor'
     | '/dashboard'
     | '/forgot-password'
+    | '/job-insights'
     | '/learn-more'
     | '/login'
+    | '/profile'
+    | '/recommendation'
+    | '/resources'
+    | '/resume-analyzer'
+    | '/roadmap'
     | '/signup'
+    | '/skill-gap'
     | '/reset-password/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
+    | '/advisor'
     | '/dashboard'
     | '/forgot-password'
+    | '/job-insights'
     | '/learn-more'
     | '/login'
+    | '/profile'
+    | '/recommendation'
+    | '/resources'
+    | '/resume-analyzer'
+    | '/roadmap'
     | '/signup'
+    | '/skill-gap'
     | '/reset-password/$token'
   id:
     | '__root__'
     | '/'
     | '/about'
+    | '/advisor'
     | '/dashboard'
     | '/forgot-password'
+    | '/job-insights'
     | '/learn-more'
     | '/login'
+    | '/profile'
+    | '/recommendation'
+    | '/resources'
+    | '/resume-analyzer'
+    | '/roadmap'
     | '/signup'
+    | '/skill-gap'
     | '/reset-password/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AdvisorRoute: typeof AdvisorRoute
   DashboardRoute: typeof DashboardRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  JobInsightsRoute: typeof JobInsightsRoute
   LearnMoreRoute: typeof LearnMoreRoute
   LoginRoute: typeof LoginRoute
+  ProfileRoute: typeof ProfileRoute
+  RecommendationRoute: typeof RecommendationRoute
+  ResourcesRoute: typeof ResourcesRoute
+  ResumeAnalyzerRoute: typeof ResumeAnalyzerRoute
+  RoadmapRoute: typeof RoadmapRoute
   SignupRoute: typeof SignupRoute
+  SkillGapRoute: typeof SkillGapRoute
   ResetPasswordTokenRoute: typeof ResetPasswordTokenRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/skill-gap': {
+      id: '/skill-gap'
+      path: '/skill-gap'
+      fullPath: '/skill-gap'
+      preLoaderRoute: typeof SkillGapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/roadmap': {
+      id: '/roadmap'
+      path: '/roadmap'
+      fullPath: '/roadmap'
+      preLoaderRoute: typeof RoadmapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/resume-analyzer': {
+      id: '/resume-analyzer'
+      path: '/resume-analyzer'
+      fullPath: '/resume-analyzer'
+      preLoaderRoute: typeof ResumeAnalyzerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/resources': {
+      id: '/resources'
+      path: '/resources'
+      fullPath: '/resources'
+      preLoaderRoute: typeof ResourcesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recommendation': {
+      id: '/recommendation'
+      path: '/recommendation'
+      fullPath: '/recommendation'
+      preLoaderRoute: typeof RecommendationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -157,6 +303,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LearnMoreRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/job-insights': {
+      id: '/job-insights'
+      path: '/job-insights'
+      fullPath: '/job-insights'
+      preLoaderRoute: typeof JobInsightsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/forgot-password': {
       id: '/forgot-password'
       path: '/forgot-password'
@@ -169,6 +322,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/advisor': {
+      id: '/advisor'
+      path: '/advisor'
+      fullPath: '/advisor'
+      preLoaderRoute: typeof AdvisorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -198,11 +358,19 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AdvisorRoute: AdvisorRoute,
   DashboardRoute: DashboardRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  JobInsightsRoute: JobInsightsRoute,
   LearnMoreRoute: LearnMoreRoute,
   LoginRoute: LoginRoute,
+  ProfileRoute: ProfileRoute,
+  RecommendationRoute: RecommendationRoute,
+  ResourcesRoute: ResourcesRoute,
+  ResumeAnalyzerRoute: ResumeAnalyzerRoute,
+  RoadmapRoute: RoadmapRoute,
   SignupRoute: SignupRoute,
+  SkillGapRoute: SkillGapRoute,
   ResetPasswordTokenRoute: ResetPasswordTokenRoute,
 }
 export const routeTree = rootRouteImport
