@@ -1,5 +1,4 @@
 import { createFileRoute,Link } from '@tanstack/react-router'
-import * as pdfjsLib from 'pdfjs-dist'
 import mammoth from 'mammoth'
 import { useState } from 'react'
 
@@ -16,7 +15,19 @@ function ResumeAnalyzer() {
   const [loading,setLoading]=useState(false)
   const [loadingText,setLoadingText]=useState("")
   const [errorMessage,setErrorMessage]=useState("")
+  useEffect(() => {
+    import('pdfjs-dist').then((pdfjs) => {
+      // Use the standard cloudflare worker to prevent bundler asset tracing issues
+      pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+      setPdfjsLib(pdfjs);
+    }).catch(err => {
+      console.error("Failed to dynamically load PDF worker", err);
+    });
+  }, []);
   const extractTextFromPDF=async(arrayBuffer)=>{
+    if (!pdfjsLib) {
+      throw new Error("PDF parser engine is still initializing. Please try again in a moment.");
+    }
     const loadingTask=pdfjsLib.getDocument({data:arrayBuffer})
     const pdf=await loadingTask.promise
     let fulltext=""
