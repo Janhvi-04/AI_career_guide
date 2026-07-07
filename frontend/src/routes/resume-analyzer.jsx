@@ -1,6 +1,7 @@
 import { createFileRoute,Link } from '@tanstack/react-router'
 import { useState,useEffect } from 'react'
-
+import mammoth from 'mammoth'
+import {readPdfText} from 'pdf-text-reader'
 export const Route = createFileRoute('/resume-analyzer')({
   component: ResumeAnalyzer,
 })
@@ -12,37 +13,13 @@ function ResumeAnalyzer() {
   const [loading,setLoading]=useState(false)
   const [loadingText,setLoadingText]=useState("")
   const [errorMessage,setErrorMessage]=useState("")
-  const [pdfjsLib, setPdfjsLib] = useState(null)
-  const [mammothInstance, setMammothInstance] = useState(null)
-  useEffect(() => {
-    import('pdfjs-dist').then((pdfjs) => {
-      // Use the standard cloudflare worker to prevent bundler asset tracing issues
-      pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
-      setPdfjsLib(pdfjs);
-    }).catch(err => {
-      console.error("Failed to dynamically load PDF worker", err);
-    });
-    import('mammoth').then((mammothModule) => {
-      setMammothInstance(mammothModule);
-    }).catch(err => console.error("Failed to load Word Doc engine:", err));
-  }, []);
+ 
   const extractTextFromPDF=async(arrayBuffer)=>{
-    if (!pdfjsLib) {
-      throw new Error("PDF parser engine is still initializing. Please try again in a moment.");
-    }
-    const loadingTask=pdfjsLib.getDocument({data:arrayBuffer})
-    const pdf=await loadingTask.promise
-    let fulltext=""
-    for(let i=1;i<=pdf.numPages;i++) {
-      const page=await pdf.getPage(i)
-      const textContent=await page.getTextContent()
-      const pageText=textContent.items.map((item)=>item.str).join(" ")
-      fulltext+=pageText+"\n"
-    }
-    return fulltext
+    const pages=await readPdfText({data: arrayBuffer})
+    return pages.map(page=>page.text).join('\n')
   }
   const extractTextFromDocx=async(arrayBuffer)=>{
-    const result=await mammothInstance.extractRawText({arrayBuffer})
+    const result=await mammoth.extractRawText({arrayBuffer})
     return result.value
   }
   const handleAnalyzeResume=async(e)=>{
