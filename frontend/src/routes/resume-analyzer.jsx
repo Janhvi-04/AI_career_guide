@@ -1,7 +1,6 @@
 import { createFileRoute,Link } from '@tanstack/react-router'
 import { useState,useEffect } from 'react'
-import mammoth from 'mammoth'
-import {readPdfText} from 'pdf-text-reader'
+
 export const Route = createFileRoute('/resume-analyzer')({
   component: ResumeAnalyzer,
 })
@@ -15,11 +14,13 @@ function ResumeAnalyzer() {
   const [errorMessage,setErrorMessage]=useState("")
  
   const extractTextFromPDF=async(arrayBuffer)=>{
-    const pages=await readPdfText({data: arrayBuffer})
-    return pages.map(page=>page.text).join('\n')
+    const initPdfParser = await import('pdf-parse-fork');
+    const pdfData = await initPdfParser.default(Buffer.from(arrayBuffer));
+    return pdfData.text;
   }
   const extractTextFromDocx=async(arrayBuffer)=>{
-    const result=await mammoth.extractRawText({arrayBuffer})
+    const mammothModule = await import('mammoth');
+    const result = await mammothModule.default.extractRawText({ arrayBuffer })
     return result.value
   }
   const handleAnalyzeResume=async(e)=>{
