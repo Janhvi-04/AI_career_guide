@@ -35,12 +35,28 @@ function ResumeAnalyzer() {
   const [errorMessage,setErrorMessage]=useState("")
  
   const extractTextFromPDF=async(arrayBuffer)=>{
-    const initPdfParser = await import('pdf-parse-fork');
-    const pdfData = await initPdfParser.default(Buffer.from(arrayBuffer));
-    return pdfData.text;
+    if(!window.pdfjsLib) {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js';
+      document.head.appendChild(script);
+      await new Promise((resolve) => {
+        script.onload = resolve;
+      });
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    }
+    const loadingTask = window.pdfjsLib.getDocument({ data: arrayBuffer });
+    const pdf = await loadingTask.promise;
+    let fullText = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map(item => item.str).join(' ');
+      fullText += pageText + '\n';
+    }
+    return fullText;
   }
   const extractTextFromDocx=async(arrayBuffer)=>{
-    const mammothModule = await import('mammoth');
+    const mammothModule = await import('mammoth/mammoth.browser');
     const result = await mammothModule.default.extractRawText({ arrayBuffer })
     return result.value
   }
