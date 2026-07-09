@@ -1,6 +1,6 @@
 import { createFileRoute,Link } from '@tanstack/react-router'
 import { useState,useEffect } from 'react'
-import { Buffer } from 'buffer'
+import { Buffer } from 'buffer/'
 if(typeof window !== 'undefined' && !window.Buffer) {
   window.Buffer=Buffer;
 }
