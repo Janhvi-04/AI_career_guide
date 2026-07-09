@@ -1,8 +1,26 @@
 import { createFileRoute,Link } from '@tanstack/react-router'
 import { useState,useEffect } from 'react'
-import { Buffer } from 'buffer/'
+
 if(typeof window !== 'undefined' && !window.Buffer) {
-  window.Buffer=Buffer;
+  window.Buffer={
+    from: (data, encoding) => {
+      if (data instanceof ArrayBuffer) return new Uint8Array(data);
+      if (data instanceof Uint8Array) return data;
+      if (typeof data === 'string') return new TextEncoder().encode(data);
+      return new Uint8Array(data);
+    },
+    isBuffer: (obj) => obj instanceof Uint8Array || (obj && obj.constructor && obj.constructor.name === 'Uint8Array'),
+    concat: (list) => {
+      let totalLength = list.reduce((acc, val) => acc + val.length, 0);
+      let result = new Uint8Array(totalLength);
+      let offset = 0;
+      for (let arr of list) {
+        result.set(arr, offset);
+        offset += arr.length;
+      }
+      return result;
+    }
+  };
 }
 export const Route = createFileRoute('/resume-analyzer')({
   component: ResumeAnalyzer,
