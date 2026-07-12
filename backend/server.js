@@ -5,7 +5,11 @@ import dotenv from "dotenv";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import authRoutes from "./routes/auth.js";
 import User from "./models/User.js";
-
+import OpenAI from 'openai';
+const grokClient=new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  baseURL: "https://api.x.ai/v1",
+})
 dotenv.config();
 const app = express();
 app.use(cors());
@@ -703,19 +707,38 @@ app.post("/api/advisor",async(req,res)=>{
     if(!message || message.trim()==="") {
       return res.status(400).json({success:false,message:"Message payload cannot be empty."})
     }
-    const model=genAI.getGenerativeModel({
-      model:"gemini-2.0-flash",
-      systemInstruction:"You are an elite, professional Assessor and Career Mentor. Provide direct, highly tactical advice regarding technical stacks, milestones, principles, and campus placemet evaluations. Keep responses insightful, scannable, structured, and strictly concise without using emojis."
-    })
-    const chat=model.startChat({history: history && Array.isArray(history)?history:[]})
-    const result=await chat.sendMessage(message)
-    const aiResponseText=result.response.text()
-    res.json({success:true,reply:aiResponseText})
+    systemInstruction:"You are an elite, professional Assessor and Career Mentor. Provide direct, highly tactical advice regarding technical stacks, milestones, principles, and campus placemet evaluations. Keep responses insightful, scannable, structured, and strictly concise without using emojis."
+    try{
+      const model=genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        systemInstruction: systemInstruction
+      })
+       const chat=model.startChat({history: history && Array.isArray(history)?history:[]})
+       const result=await chat.sendMessage(message)
+       const aiResponseText=result.response.text()
+       return res.json({success:true,reply:aiResponseText})
+    } catch(geminiError) {
+      const isRateLimit = geminiError.status === 429 || geminiError.message?.includes("429");
+      if(isRateLimit) {
+        const grokMessages=[
+          {role:"system",content:systemInstruction},
+          ...GoogleGenerativeAI(history || []).map(msg=>({
+            role:msg.role==='model'?'assistant':'user',
+            content:msg.parts[0].text
+          })),
+          {role:"user",content:message}
+        ];
+        const grokResponse=await grokClient.chat.completions.create({
+          model:"grok-4.5",
+          messages:grokMessages
+        });
+        const grokText=grokResponse.choices[0].message.content;
+        return res.json({succes:true,reply:grokText})
+      }
+      throw geminiError;
+    }
   } catch(error) {
     console.error("Advisor Chatbot Processing Error:",error)
-    if(error.status===429 || error.message?.includes("429")) {
-      return res.status(429).json({success:false,message:"Rate limit restriction encountered. Cool down a moment."})
-    }
     if (error.status === 503 || error.message?.includes("503")) {
       return res.status(503).json({ 
         success: false, 
