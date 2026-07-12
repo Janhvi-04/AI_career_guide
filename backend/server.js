@@ -701,17 +701,16 @@ app.post("/api/job-insights",async(req,res)=>{
     res.status(500).json({ success: false, message: "Internal server error gathering market insights trends." });
   }
 })
+const SYSTEM_INSTRUCTION="You are an elite, professional Assessor and Career Mentor. Provide direct, highly tactical advice regarding technical stacks, milestones, principles, and campus placemet evaluations. Keep responses insightful, scannable, structured, and strictly concise without using emojis.";
 app.post("/api/advisor",async(req,res)=>{
   try{
     const {message,history}=req.body
     if(!message || message.trim()==="") {
       return res.status(400).json({success:false,message:"Message payload cannot be empty."})
     }
-    systemInstruction:"You are an elite, professional Assessor and Career Mentor. Provide direct, highly tactical advice regarding technical stacks, milestones, principles, and campus placemet evaluations. Keep responses insightful, scannable, structured, and strictly concise without using emojis."
     try{
       const model=genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
-        systemInstruction: systemInstruction
+        model: "gemini-2.5-flash"
       })
        const chat=model.startChat({history: history && Array.isArray(history)?history:[]})
        const result=await chat.sendMessage(message)
@@ -721,7 +720,7 @@ app.post("/api/advisor",async(req,res)=>{
       const isRateLimit = geminiError.status === 429 || geminiError.message?.includes("429");
       if(isRateLimit) {
         const grokMessages=[
-          {role:"system",content:systemInstruction},
+          {role:"system",content:SYSTEM_INSTRUCTION},
           ...GoogleGenerativeAI(history || []).map(msg=>({
             role:msg.role==='model'?'assistant':'user',
             content:msg.parts[0].text
