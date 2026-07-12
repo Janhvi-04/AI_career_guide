@@ -19,14 +19,6 @@ const Route = createFileRoute("/")({
         property: "og:description",
         content: "Personalized AI career recommendations, skill gap analysis and roadmaps to build your future."
       }
-    ],
-    links: [
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
-      }
     ]
   }),
   component: Index

@@ -1,5 +1,6 @@
 import React from "react";
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { css as fontCss, preloads as fontPreloads } from "virtual:vite-font";
 import appCss from "../styles.css?url";
 import { Navbar } from "../components/Navbar";
 import {Toaster} from "react-hot-toast"
@@ -42,6 +43,17 @@ function RootShell({ children }) {
   return /* @__PURE__ */ (
     <html lang="en">
       <head>
+        {fontPreloads.map((font) => (
+          <link
+            key={font.href}
+            rel="preload"
+            as="font"
+            type={font.type}
+            href={font.href}
+            crossOrigin="anonymous"
+          />
+        ))}
+        <style dangerouslySetInnerHTML={{ __html: fontCss }}/>
         <HeadContent/>
       </head>
       <body>
