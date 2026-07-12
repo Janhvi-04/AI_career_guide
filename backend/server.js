@@ -53,12 +53,7 @@ async function resolveRoleSkillRequirements(role, skills) {
   if (!profileSkills.length) {
     throw new Error("No profile skills provided for AI requirement analysis.");
   }
-
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
-    generationConfig: {
-      responseMimeType: "application/json",
-      responseSchema: {
+  const skillRequirementsSchema = {
         type: "object",
         properties: {
           skillRequirements: {
@@ -74,10 +69,7 @@ async function resolveRoleSkillRequirements(role, skills) {
           },
         },
         required: ["skillRequirements"],
-      },
-    },
-  });
-
+      };
   const prompt = `You are a career skills analyst. Evaluate hiring expectations for this exact candidate profile.
 
 Target job role: "${role}"
@@ -96,28 +88,77 @@ Rules:
 - Nice-to-have or peripheral skills: 45-60%
 - Do NOT default every skill to the same number.
 - Do NOT use 100% unless the skill is an absolute non-negotiable prerequisite for "${role}".`;
-
-  const result = await model.generateContent(prompt);
-  const data = JSON.parse(result.response.text().trim());
-
-  const merged = profileSkills.map((userSkill) => {
-    const match =
-      (data.skillRequirements || []).find(
-        (r) => r.name.toLowerCase() === userSkill.name.toLowerCase(),
-      ) || findAiSkill(data.skillRequirements || [], userSkill.name);
-
-    const required = clampPercent(match?.required);
-    if (required == null) {
-      throw new Error(`AI did not return a required level for skill: ${userSkill.name}`);
+  let data;
+  try {
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: skillRequirementsSchema,
+      },
+    });
+    const result = await model.generateContent(prompt);
+    let text = result.response.text().trim();
+    if (text.startsWith("```json")) {
+      text = text.replace(/^```json/, "").replace(/```$/, "").trim();
+    } else if (text.startsWith("```")) {
+      text = text.replace(/^```/, "").replace(/```$/, "").trim();
     }
-
+    data = JSON.parse(text);
+  } catch(geminiError) {
+    const isRateLimit=geminiError.status === 429 || geminiError.message?.includes("429");
+    if(isRateLimit) {
+      try {
+        const grokResponse = await grokClient.chat.completions.create({
+          model: "grok-4.5",
+          messages: [
+            { 
+              role: "system", 
+              content: "You are an expert career skills analyst that maps industry requirement benchmarks strictly matching the user provided skill list structure." 
+            },
+            { role: "user", content: prompt }
+          ],
+          response_format: {
+            type: "json_object",
+            schema: skillRequirementsSchema
+          }
+        });
+        const grokText = grokResponse.choices[0].message.content.trim();
+        data = JSON.parse(grokText);
+      } catch (grokError) {
+        console.error("Grok Fallback Engine Failed during skill requirements:", grokError);
+        data = null;
+      }
+    } else {
+      console.error("Gemini failed with non-rate-limit error on skill matching:", geminiError);
+      data = null;
+    }
+  }
+  
+  const merged = profileSkills.map((userSkill) => {
+    let rawRequired;
+    if (data && Array.isArray(data.skillRequirements)) {
+      const match = data.skillRequirements.find(
+        (r) => r && r.name && r.name.toLowerCase() === userSkill.name.toLowerCase()
+      ) || (typeof findAiSkill === "function" ? findAiSkill(data.skillRequirements, userSkill.name) : null);
+      rawRequired = match?.required;
+    }
+    if (rawRequired == null) {
+      const lowerSkill = userSkill.name.toLowerCase();
+      const lowerRole = role.toLowerCase();
+      const isCore = lowerSkill.includes("react") || lowerSkill.includes("node") || 
+                     lowerSkill.includes("mongo") || lowerSkill.includes("express") || 
+                     lowerSkill.includes("javascript") || lowerSkill.includes("mern") ||
+                     lowerRole.includes(lowerSkill) || lowerSkill.includes(lowerRole);
+      rawRequired = isCore ? 85 : 70; 
+    }
+    const required = typeof clampPercent === "function" ? clampPercent(rawRequired) : Math.min(100,Math.max(0,rawRequired));
     return {
       name: userSkill.name,
       yours: userSkill.yours,
       required,
     };
   });
-
   return merged;
 }
 
@@ -126,20 +167,14 @@ app.post("/api/profile/analyze", async (req, res) => {
   let skillsPayload=[];
   try {
     skillsPayload = normalizeProfileSkills(skills);
-
     if (!role) {
       return res.status(400).json({ success: false, message: "Target role is required for AI evaluation." });
     }
+
     if (!skillsPayload.length) {
       return res.status(400).json({ success: false, message: "At least one skill is required." });
     }
-
-    // 1. COMBINE ALL SCHEMAS INTO ONE CALL TO SAVE RE-REQUEST QUOTAS
-    const unifiedModel = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash", // Using standard flash to handle larger structural schemas comfortably
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: {
+    const profileAnalysisSchema = {
           type: "object",
           properties: {
             skillData: {
@@ -206,62 +241,95 @@ app.post("/api/profile/analyze", async (req, res) => {
             }
           },
           required: ["skillData", "roadmapData", "jobData", "resourcesData"]
-        }
-      }
-    });
-
+        };
     const unifiedPrompt = `You are an expert technical career strategist. Evaluate this candidate profile for the target role: "${role}".
-    
     Profile Details:
     - Current Skills: ${JSON.stringify(skillsPayload)}
     - Projects: ${Array.isArray(projects) ? projects.join(", ") : "None"}
-
     Perform a full placement readiness audit. Generate:
     1. A match score and short skill gap priority matrix.
     2. A structured milestone roadmap layout.
     3. Indian placement tech job market trends and salary estimates (LPA),don't give descriptions.
     4. Exactly 3 tailored documentation platforms to study, including their exact official documentation web URL links.`;
-
-    const result = await unifiedModel.generateContent(unifiedPrompt);
-    const parsedData = JSON.parse(result.response.text().trim());
-
-    const skillsMatrix = await resolveRoleSkillRequirements(role, skillsPayload);
-
-    // 2. DISPATCH THE ENTIRE DATA SET IN A SINGLE CLEAN RESPONSE Object
-    return res.json({
-      success: true,
-      aiAnalysis: {
-        role,
-        projects: Array.isArray(projects) ? projects : [],
-        matchScore: parsedData.skillData.matchScore,
-        verdict: parsedData.skillData.verdict,
-        skillsMatrix,
-        missingGaps: parsedData.skillData?.missingSkills || [],
-        roadmap: parsedData.roadmapData || [],
-        jobInsights: {
-          demandLevel:parsedData.jobData?.demandLevel,
-          salaryRangeIndia:parsedData.jobData?.salaryRangeIndia,
-          trendingConcepts:parsedData.jobData?.trendingConcepts
-        },
-        curatedResources: parsedData.resourcesData || []
+    let parsedData;
+    try {
+      const unifiedModel = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash", 
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: profileAnalysisSchema
+        }
+      });
+      const result = await unifiedModel.generateContent(unifiedPrompt);
+      let text = result.response.text().trim();
+      if (text.startsWith("```json")) {
+        text = text.replace(/^```json/, "").replace(/```$/, "").trim();
+      } else if (text.startsWith("```")) {
+        text = text.replace(/^```/, "").replace(/```$/, "").trim();
       }
-    });
-
+      parsedData=JSON.parse(text);
+    } catch (geminiError) {
+      const isRateLimit=geminiError.status === 429 || geminiError.message?.includes("429");
+      if(isRateLimit) {
+        try {
+          const grokResponse = await grokClient.chat.completions.create({
+            model: "grok-4.5",
+            messages: [
+              { 
+                role: "system", 
+                content: "You are an elite placement analysis systems matrix evaluator that outputs complex nested profiles conforming exactly to the requested schema layout." 
+              },
+              { role: "user", content: unifiedPrompt }
+            ],
+            response_format: {
+              type: "json_object",
+              schema: profileAnalysisSchema
+            }
+          });
+          const grokText = grokResponse.choices[0].message.content.trim();
+          parsedData = JSON.parse(grokText);
+        } catch (grokError) {
+          console.error("Grok Fallback Engine Failed during profile audit:", grokError)
+          throw grokError;
+        }
+      } else {
+        throw geminiError;
+      }
+    }
+      const skillsMatrix = await resolveRoleSkillRequirements(role, skillsPayload);
+      return res.json({
+        success: true,
+        aiAnalysis: {
+          role,
+          projects: Array.isArray(projects) ? projects : [],
+          matchScore: parsedData.skillData.matchScore,
+          verdict: parsedData.skillData.verdict,
+          skillsMatrix,
+          missingGaps: parsedData.skillData?.missingSkills || [],
+          roadmap: parsedData.roadmapData || [],
+          jobInsights: {
+            demandLevel:parsedData.jobData?.demandLevel,
+            salaryRangeIndia:parsedData.jobData?.salaryRangeIndia,
+            trendingConcepts:parsedData.jobData?.trendingConcepts
+          },
+          curatedResources: parsedData.resourcesData || []
+        }
+      });
   } catch (error) {
     console.error("AI Analysis Route Failure Stack:", error);
-
-    // 3. FAULT TO LOCAL RESILIENT FALLBACK ON RATE LIMITS (429/503)
-    if (error.status === 429 || error.status === 503 || error.message?.includes("429") || error.message?.includes("503")) {
-      console.warn("Serving unified fallback structure due to API limits.");
-      if(!skillsPayload || !skillsPayload.length) {
+    const isServerOverload = error.status === 503 || error.message?.includes("503");
+    const isRateLimit = error.status === 429 || error.message?.includes("429");
+    if (isRateLimit || isServerOverload) {
+      console.warn("Serving unified fallback baseline structure due to API limits or system load.");
+      if (!skillsPayload || !skillsPayload.length) {
         try {
-          skillsPayload=normalizeProfileSkills(skills)
-        } catch(_) {
-          skillsPayload=[]
+          skillsPayload = normalizeProfileSkills(skills);
+        } catch (_) {
+          skillsPayload = [];
         }
       }
       const diagnosticSkills=Array.isArray(skillsPayload)?skillsPayload:[]
-      const safeSkillsMatrix=diagnosticSkills.map(s=>({
+      let safeSkillsMatrix=diagnosticSkills.map(s=>({
         name:s && s.name?s.name:"Core Skill",
         yours:s && s.yours?Number(s.yours):70,
         required:80
@@ -301,7 +369,7 @@ app.post("/api/profile/analyze", async (req, res) => {
         }
       });
     }
-    res.status(500).json({ success: false, message: "AI processing pipeline hit an error: ${error.message}" });
+    return res.status(500).json({ success: false, message: `AI processing pipeline hit an error: ${error.message}` });
   }
 });
 app.post("/api/profile",async(req,res)=>{
@@ -347,13 +415,8 @@ app.post("/api/recommend", async (req, res) => {
         success: false,
         message: "Skills and interests are required fields."
       });
-    }
-    // 1. Tell Gemini exactly what structural format you want using native schema validation
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-lite",
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: {
+    };
+    const recommendSchema = {
           type: "array",
           description: "List of 3 career recommendations",
           items: {
@@ -368,19 +431,64 @@ app.post("/api/recommend", async (req, res) => {
             },
             required: ["title", "description", "roadmap"],
           },
-        },
-      }
-    });
+        };
     const prompt = `Suggest 3 best career options for a person based on these parameters. 
     Skills: ${skills}
     Interests: ${interests}`;
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
-    const parsedData = JSON.parse(text);
-    res.json({
-      success: true,
-      data: parsedData,
-    });
+    try {
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash-lite",
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: recommendSchema
+        }
+      });
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().trim();
+      if (text.startsWith("```json")) {
+        text = text.replace(/^```json/, "").replace(/```$/, "").trim();
+      } else if (text.startsWith("```")) {
+        text = text.replace(/^```/, "").replace(/```$/, "").trim();
+      }
+      const parsedData = JSON.parse(text);
+      res.json({
+        success: true,
+        data: parsedData,
+      });
+    } catch(geminiError) {
+      const isRateLimit = 
+        geminiError.status === 429 || 
+        geminiError.message?.includes("429") || 
+        geminiError.message?.includes("Quota exceeded");
+      if(isRateLimit) {
+        try {
+          const grokResponse = await grokClient.chat.completions.create({
+            model: "grok-4.5",
+            messages: [
+              { 
+                role: "system", 
+                content: "You are an elite career counselor assistant that outputs a raw JSON array matching the specified array layout perfectly." 
+              },
+              { role: "user", content: prompt }
+            ],
+            response_format: {
+              type: "json_object",
+              schema: recommendSchema
+            }
+          });
+          const grokText = grokResponse.choices[0].message.content.trim();
+          const parsedGrokData = JSON.parse(grokText);
+          return res.json({ success: true, data: parsedGrokData });
+        } catch (grokError) {
+          console.error("Grok Recommend Fallback Engine Failed:", grokError);
+          return res.status(429).json({ 
+            success: false, 
+            message: `Rate limit hit. Architecture fallback processing failed: ${grokError.message || 'Check credentials status.'}` 
+          });
+        }
+      }
+      throw geminiError;
+    }
   } catch (error) {
     console.error("Gemini Error Stack:", error);
     if (error.status === 503 || error.message?.includes("503") || error.message?.includes("Service Unavailable")) {
@@ -388,18 +496,7 @@ app.post("/api/recommend", async (req, res) => {
         success: false,
         message: "AI servers are heavily overloaded right now. Please click again in a few seconds!"
       });
-    }
-    // 3. Robust error checking for quota exhaustion
-    const isRateLimit = 
-      error.status === 429 || 
-      error.message?.includes("429") || 
-      error.message?.includes("Quota exceeded");
-    if (isRateLimit) {
-      return res.status(429).json({
-        success: false,
-        message: "The AI service is temporarily rate-limited due to heavy free-tier usage. Please retry in a minute!"
-      });
-    }
+    };
     res.status(500).json({
       success: false,
       message: "An internal server error occurred while analyzing careers.",
@@ -412,11 +509,7 @@ app.post("/api/resources",async(req,res)=>{
     if(!topic) {
       return res.status(400).json({success:false, message: "Topic search query is required."})
     }
-    const model=genAI.getGenerativeModel({
-      model:"gemini-2.5-flash-lite",
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: {
+    const resourcesSchema = {
           type: "array",
           description: "List of 4 distinct, highly accurate resource search configurations",
           items: {
@@ -430,18 +523,60 @@ app.post("/api/resources",async(req,res)=>{
             },
             required: ["title", "platform", "contentType", "description", "searchQuery"]
           }
-        }
-      }
-    })
+        };
     const prompt=`Provide exactly 4 highly-rated learning resource mappings for a user wanting to learn "${topic}". 
     Target Experience Level: ${level || 'Beginner'}.
     Distribute the resources smartly across platforms: include some video content and some documentation references.`;
-    const result=await model.generateContent(prompt);
-    const text=result.response.text();
-    const parsedResources=JSON.parse(text);
-    res.json({
-      success:true, data:parsedResources
-    });
+    try {
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash-lite",
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: resourcesSchema
+        }
+      });
+      const result=await model.generateContent(prompt);
+      const text=result.response.text().trim();
+      if (text.startsWith("```json")) {
+        text = text.replace(/^```json/, "").replace(/```$/, "").trim();
+      } else if (text.startsWith("```")) {
+        text = text.replace(/^```/, "").replace(/```$/, "").trim();
+      }
+      const parsedResources=JSON.parse(text);
+      res.json({
+        success:true, data:parsedResources
+      });
+    } catch(geminiError) {
+      const isRateLimit = geminiError.status === 429 || geminiError.message?.includes("429") || geminiError.message?.includes("Quota exceeded");
+      if(isRateLimit) {
+        try {
+          const grokResponse = await grokClient.chat.completions.create({
+            model: "grok-4.5",
+            messages: [
+              { 
+                role: "system", 
+                content: "You are an expert resource mapper assistant that outputs a raw JSON array matching the specified array schema layout perfectly." 
+              },
+              { role: "user", content: prompt }
+            ],
+            response_format: {
+              type: "json_object",
+              schema: resourcesSchema
+            }
+          });
+          const grokText = grokResponse.choices[0].message.content.trim();
+          const parsedGrokResources = JSON.parse(grokText);
+          return res.json({ success: true, data: parsedGrokResources });
+        } catch (grokError) {
+          console.error("Grok Resources Fallback Engine Failed:", grokError);
+          return res.status(429).json({ 
+            success: false, 
+            message: `Rate limit hit. Architecture fallback processing failed: ${grokError.message || 'Check credentials status.'}` 
+          });
+        }
+      }
+      throw geminiError;
+    }
   } catch(error) {
     console.error("Resouces API Error Stack:",error);
     if (error.status === 503 || error.message?.includes("503") || error.message?.includes("Service Unavailable")) {
@@ -449,13 +584,7 @@ app.post("/api/resources",async(req,res)=>{
         success: false,
         message: "Servers are heavily overloaded right now. Please click again in a few seconds!"
       });
-    }
-    if (error.status === 429 || error.message?.includes("429") || error.message?.includes("Quota exceeded")) {
-      return res.status(429).json({
-        success: false,
-        message: "The service is temporarily rate-limited due to heavy free-tier usage. Please retry in a minute!"
-      });
-    }
+    };
     res.status(500).json({ 
       success: false, 
       message: "An internal server error occurred while sourcing learning resources." 
@@ -468,11 +597,7 @@ app.post("/api/skill-gap",async(req,res)=>{
     if(!targetRole || !currentSkills) {
       return res.status(400).json({success:false, message:"Target job role and current skills are both required."})
     }
-    const model=genAI.getGenerativeModel({
-      model:"gemini-2.5-flash-lite",
-      generationConfig:{
-        responseMimeType: "application/json",
-        responseSchema:{
+    const gapSchema = {
           type:"object",
           properties:{
             matchingSkills:{
@@ -495,24 +620,63 @@ app.post("/api/skill-gap",async(req,res)=>{
             verdict:{type:"string"}
           },
           required:["matchingSkills","missingSkills","verdict"]
-        }
-      }
-    });
+        };
     const prompt = `You are an expert Placement Assessor. Analyze the skill gap for an applicant aiming for the role of "${targetRole}".
     The user's current skillset is: "${currentSkills}".
     Compare their current skills against standard core industry benchmarks for this role.`;
-    const result=await model.generateContent(prompt);
-    const text=result.response.text();
-    const parsedAnalysis=JSON.parse(text);
-    res.json({success:true,data:parsedAnalysis})
+    try {
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash-lite",
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: gapSchema
+        }
+      });
+      const result=await model.generateContent(prompt);
+      const text=result.response.text().trim();
+      if (text.startsWith("```json")) {
+        text = text.replace(/^```json/, "").replace(/```$/, "").trim();
+      } else if (text.startsWith("```")) {
+        text = text.replace(/^```/, "").replace(/```$/, "").trim();
+      }
+      const parsedAnalysis=JSON.parse(text);
+      return res.json({success:true,data:parsedAnalysis})
+    } catch(geminiError) {
+      const isRateLimit = geminiError.status === 429 || geminiError.message?.includes("429");
+      if(isRateLimit) {
+        try {
+          const grokResponse = await grokClient.chat.completions.create({
+            model: "grok-4.5",
+            messages: [
+              { 
+                role: "system", 
+                content: "You are an elite placement analytics evaluator that outputs strict structured analysis matching the requested JSON layout precisely." 
+              },
+              { role: "user", content: prompt }
+            ],
+            response_format: {
+              type: "json_object",
+              schema: gapSchema
+            }
+          });
+          const grokText = grokResponse.choices[0].message.content.trim();
+          const parsedGrokAnalysis = JSON.parse(grokText);
+          return res.json({ success: true, data: parsedGrokAnalysis });
+        } catch (grokError) {
+          console.error("Grok Skill Gap Fallback Engine Failed:", grokError);
+          return res.status(429).json({ 
+            success: false, 
+            message: `Rate limit hit. Telemetry pipeline processing failed: ${grokError.message || 'Check balance limits.'}` 
+          });
+        }
+      }
+      throw geminiError;
+    }
   } catch (error) {
     console.error("Skill Gap API Error Stack:", error);
     if (error.status === 503 || error.message?.includes("503")) {
       return res.status(503).json({ success: false, message: "Servers are busy. Please try analyzing again in a few seconds!" });
-    }
-    if (error.status === 429 || error.message?.includes("429")) {
-      return res.status(429).json({ success: false, message: "Rate limit reached. Please give it a minute to cool down." });
-    }
+    };
     res.status(500).json({ success: false, message: "Internal server error analyzing skills gap." });
   }
 })
@@ -521,14 +685,10 @@ app.post("/api/roadmap",async(req,res)=>{
     const {targetGoal,timeframe}=req.body;
     if(!targetGoal) {
       return res.status(400).json({
-        succes:false, message: "Target goal or tech stack description is required."
+        success:false, message: "Target goal or tech stack description is required."
       })
     }
-    const model=genAI.getGenerativeModel({
-      model:"gemini-2.5-flash-lite",
-      generationConfig: {
-        responseMimeType:"application/json",
-        responseSchema:{
+    const roadmapSchema={
           type:"object",
           properties:{
             title:{type:"string"},
@@ -552,24 +712,63 @@ app.post("/api/roadmap",async(req,res)=>{
             }
           },
           required:["title","estimatedTotalWeeks","milestones"]
-        }
-      }
-    });
+        };
     const prompt = `You are an elite Mentor. Generate a highly structured, practical, step-by-step learning roadmap for achieving the following goal: "${targetGoal}".
     The user wants to optimize their schedule for a preferred timeframe of: "${timeframe || 'Flexible / As soon as possible'}".
     Ensure the path starts from foundational prerequisites and moves logically toward advanced deployment/production concepts. Every milestone must have a tangible mini-project.`;
-    const result=await model.generateContent(prompt);
-    const text=result.response.text();
-    const parsedRoadmap=JSON.parse(text);
-    res.json({success:true,data:parsedRoadmap})
+    try {
+      const model=genAI.getGenerativeModel({
+        model:"gemini-2.5-flash-lite",
+        generationConfig:{
+          responseMimeType:"application/json",
+          responseSchema:roadmapSchema
+        }
+      })
+      const result=await model.generateContent(prompt);
+      const text=result.response.text().trim();
+      if (text.startsWith("```json")) {
+        text = text.replace(/^```json/, "").replace(/```$/, "").trim();
+      } else if (text.startsWith("```")) {
+        text = text.replace(/^```/, "").replace(/```$/, "").trim();
+      }
+      const parsedRoadmap=JSON.parse(text);
+      return res.json({success:true,data:parsedRoadmap})
+    } catch(geminiError) {
+      const isRateLimit = geminiError.status === 429 || geminiError.message?.includes("429");
+      if(isRateLimit) {
+        try {
+          const grokResponse = await grokClient.chat.completions.create({
+            model: "grok-4.5",
+            messages: [
+              { 
+                role: "system", 
+                content: "You are an elite educational engineering assistant that outputs strict structured career roadmaps conforming exactly to the requested JSON schema blueprint." 
+              },
+              { role: "user", content: prompt }
+            ],
+            response_format: {
+              type: "json_object",
+              schema: roadmapSchema
+            }
+          });
+          const grokText = grokResponse.choices[0].message.content.trim();
+          const parsedGrokRoadmap = JSON.parse(grokText);
+          return res.json({ success: true, data: parsedGrokRoadmap });
+        } catch(grokError) {
+          console.error("Grok Roadmap Fallback Engine Failed:", grokError);
+          return res.status(429).json({ 
+            success: false, 
+            message: `Rate limit hit. Architecture fallback processing failed: ${grokError.message || 'Check credentials status.'}` 
+          });
+        }
+      }
+      throw geminiError;
+    }
   } catch(error) {
     console.error("Roadmap API Error Stack:",error);
     if(error.status==503 || error.message?.includes("503")) {
       return res.status(503).json({success:false,message:"AI engines are heavily loaded. Please click generate again!"})
-    }
-    if(error.status==429 || error.message?.includes("429")) {
-      return res.status(429).json({success: false,message:"Rate limit reached. Please wait a brief moment before retrying."})
-    }
+    };
     res.status(500).json({success:false,message:"Internal server error creating your custom roadmap."})
   }
 })
@@ -579,11 +778,7 @@ app.post("/api/resume-analyzer",async(req,res)=>{
     if(!resumeText || !targetRole) {
       return res.status(400).json({success:false,message:"Both resume content and target job role are required."})
     }
-    const model=genAI.getGenerativeModel({
-      model:"gemini-2.5-flash-lite",
-      generationConfig:{
-        responseMimeType:"application/json",
-        responseSchema:{
+    const resumeSchema={
           type:"object",
           properties:{
             atsScore:{type:"number",description:"An alignment score out of 100"},
@@ -607,24 +802,61 @@ app.post("/api/resume-analyzer",async(req,res)=>{
             structuralVerdict:{type:"string",description:"A blunt, realistic assessment of whether this resume clears initial screenings."}
           },
           required:["atsScore","criticalFixes","keyKeywordsMissing","structuralVerdict"]
-        }
-      }
-    })
+        };
     const prompt=`You are an elite corporate recruiter and ATS optimization machine. Analyze the following resume text against the core benchmarks for a "${targetRole}" position.
     Resume Text:
     """
     ${resumeText}
     """
     Calculate a realistic ATS match percentage. Isolate specific keyword omissions and format actionable rewrites that maintain ethical description parameters.`
-    const result=await model.generateContent(prompt)
-    const text=result.response.text()
-    if (text.startsWith("```json")) {
-      text = text.replace(/^```json/, "").replace(/```$/, "").trim();
-    } else if (text.startsWith("```")) {
-      text = text.replace(/^```/, "").replace(/```$/, "").trim();
+    try {
+      const model=genAI.getGenerativeModel({
+        model:"gemini-2.5-flash-lite",
+        generationConfig:{
+          responseMimeType:"application/json",
+          responseSchema:resumeSchema
+        }
+      })
+      const result=await model.generateContent(prompt)
+      let text=result.response.text().trim()
+      if (text.startsWith("```json")) {
+        text = text.replace(/^```json/, "").replace(/```$/, "").trim();
+      } else if (text.startsWith("```")) {
+        text = text.replace(/^```/, "").replace(/```$/, "").trim();
+      }
+      const parsedAnalysis=JSON.parse(text)
+      return res.json({success:true,data:parsedAnalysis})
+    } catch(geminiError) {
+      const isRateLimit = geminiError.status === 429 || geminiError.message?.includes("429");
+      if(isRateLimit) {
+        try {
+          const grokResponse = await grokClient.chat.completions.create({
+            model: "grok-4.5",
+            messages: [
+              { 
+                role: "system", 
+                content: "You are an expert recruitment parser endpoint returning strictly structured data conforming exactly to the requested JSON schema specification." 
+              },
+              { role: "user", content: prompt }
+            ],
+            response_format: {
+              type: "json_object",
+              schema: resumeSchema
+            }
+          });
+          const grokText = grokResponse.choices[0].message.content.trim();
+          const parsedGrokAnalysis = JSON.parse(grokText);
+          return res.json({ success: true, data: parsedGrokAnalysis });
+        } catch(grokError) {
+          console.error("Grok Resume Analyzer Fallback Engine Failed:", grokError);
+          return res.status(429).json({ 
+            success: false, 
+            message: `Rate limit hit. Parsing fallback pipeline failed: ${grokError.message || 'Check account tokens.'}` 
+          });
+        }
+      }
+      throw geminiError;
     }
-    const parsedAnalysis=JSON.parse(text)
-    res.json({success:true,data:parsedAnalysis})
   } catch (error) {
     console.error("Resume Analyzer Error Stack:",error)
     if(error.status===503 || error.message?.includes("503")) {
@@ -639,11 +871,7 @@ app.post("/api/job-insights",async(req,res)=>{
     if(!targetRole) {
       return res.status(400).json({success:false,message:"Target role is required."})
     }
-    const model=genAI.getGenerativeModel({
-      model:"gemini-2.5-flash-lite",
-      generationConfig:{
-        responseMimeType:"application/json",
-        responseSchema:{
+    const insightSchema={
           type:"object",
           properties:{
             roleTitle:{type:"string"},
@@ -680,19 +908,56 @@ app.post("/api/job-insights",async(req,res)=>{
             }
           },
           required:["roleTitle","growthRatePercentage","demandLevel","marketDemandScore","salaryRanges","trendingSkills","topHiringLocations","industryOutlook"]
+        };
+    const prompt=`Provide precise, realistic, up-to-date technical hiring market insights for the role: "${targetRole}" within the current tech industry landscape. Focus on localized Indian market context defaults (LPA ranges) mixed with general global trends where relevant. Ensure numbers display as realistic benchmarks.`
+    try {
+      const model=genAI.getGenerativeModel({
+        model:"gemini-2.5-flash-lite",
+        generationConfig:{
+          responseMimeType:"application/json",
+          responseSchema:insightSchema
+        }
+      })
+      const result=await model.generateContent(prompt)
+      let text=result.response.text().trim()
+      if (text.startsWith("```json")) {
+        text = text.replace(/^```json/, "").replace(/```$/, "").trim();
+      } else if (text.startsWith("```")) {
+        text = text.replace(/^```/, "").replace(/```$/, "").trim();
+      }
+      const parsedInsights=JSON.parse(text)
+      return res.json({success:true,data:parsedInsights})
+    } catch(geminiError) {
+      const isRateLimit = geminiError.status === 429 || geminiError.message?.includes("429");
+      if (isRateLimit) {
+        try {
+          const grokResponse=await grokClient.chat.completions.create({
+            model: "grok-4.5",
+            messages: [
+              { 
+                role: "system", 
+                content: "You are a specialized API service that returns analytics exclusively in rigid JSON format. Match the structure requested exactly." 
+              },
+              { role: "user", content: prompt }
+            ],
+            response_format: {
+              type: "json_object",
+              schema: insightSchema
+            }
+          })
+          const grokText = grokResponse.choices[0].message.content.trim();
+          const parsedGrokInsights = JSON.parse(grokText);
+          return res.json({ success: true, data: parsedGrokInsights });
+        } catch (grokError) {
+          console.error("Grok Insights Fallback Engine Failed:", grokError);
+          return res.status(429).json({ 
+            success: false, 
+            message: `Rate limit hit. Telemetry fallback failed: ${grokError.message || 'Check balance parameters.'}` 
+          });
         }
       }
-    })
-    const prompt=`Provide precise, realistic, up-to-date technical hiring market insights for the role: "${targetRole}" within the current tech industry landscape. Focus on localized Indian market context defaults (LPA ranges) mixed with general global trends where relevant. Ensure numbers display as realistic benchmarks.`
-    const result=await model.generateContent(prompt)
-    const text=result.response.text().trim()
-    if (text.startsWith("```json")) {
-      text = text.replace(/^```json/, "").replace(/```$/, "").trim();
-    } else if (text.startsWith("```")) {
-      text = text.replace(/^```/, "").replace(/```$/, "").trim();
+      throw geminiError;
     }
-    const parsedInsights=JSON.parse(text)
-    res.json({success:true,data:parsedInsights})
   } catch (error) {
     console.error("Market Insights Error Stack:",error)
     if (error.status === 503 || error.message?.includes("503")) {
