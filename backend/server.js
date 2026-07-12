@@ -6,11 +6,11 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import authRoutes from "./routes/auth.js";
 import User from "./models/User.js";
 import OpenAI from 'openai';
+dotenv.config();
 const grokClient=new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   baseURL: "https://api.x.ai/v1",
 })
-dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
