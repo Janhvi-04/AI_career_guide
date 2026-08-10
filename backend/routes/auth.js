@@ -6,7 +6,6 @@ import nodemailer from "nodemailer";
 import { Resend } from "resend";
 import dns from "dns";
 import jwt from "jsonwebtoken";
-const resend=new Resend(process.env.RESEND_API_KEY);
 const router=express.Router();
 router.post("/signup",async(req,res)=>{
     try {
