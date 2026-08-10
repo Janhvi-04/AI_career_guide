@@ -110,14 +110,11 @@ router.post("/reset-password/:token", async (req, res) => {
 });
 
 const transporter = nodemailer.createTransport({
-      service: "smtp.gmail.com",
-      port:465,
-      secure:true,
+      service: "gmail",
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
       },
-      family:4,
       connectionTimeout: 10000, // 10 seconds timeout
 });
 router.post("/forgot-password", async (req, res) => {
