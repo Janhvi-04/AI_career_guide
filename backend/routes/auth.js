@@ -124,18 +124,26 @@ router.post("/forgot-password", async (req, res) => {
     user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; //15min
     await user.save();
     const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-    const {data,error}=await resend.emails.send({
-      from: "CareerGuide AI <onboarding@resend.dev>",
-      to: user.email,
-      subject: "Password Reset",
-      html: `<p>Click to reset password:</p>
-             <a href="${resetLink}">${resetLink}</a>`
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "accept": "application/json",
+        "api-key": process.env.BREVO_API_KEY,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: { name: "CareerGuide AI", email: "janvi042005@gmail.com" }, // Your verified Gmail
+        to: [{ email: user.email }], 
+        subject: "Password Reset",
+        htmlContent: `<p>Click to reset your password:</p><a href="${resetLink}">${resetLink}</a>`,
+      }),
     });
-    if (error) {
-      console.error("RESEND ERROR:", error);
-      return res.status(500).json({ message: error.message });
+    const data=await response.json();
+    if (!response.ok) {
+      console.error("BREVO ERROR:", data);
+      return res.status(500).json({ message: data.message || "Email sending failed" });
     }
-    return res.json({ message: "Reset link sent to email" });
+    return res.status(200).json({ message: "Reset link sent to email" });
   } catch (err) {
     console.log("LOGIN ERROR:", err); 
     return res.status(500).json({ message: "Server error" });
