@@ -9,7 +9,8 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.6.1",
     "nodemailer": "^8.0.7",
-    "openai": "^6.46.0"
+    "openai": "^6.46.0",
+    "resend": "^6.18.1"
   },
   "type": "module",
   "scripts": {

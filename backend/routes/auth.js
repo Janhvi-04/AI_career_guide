@@ -3,20 +3,11 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import dns from "dns";
 import jwt from "jsonwebtoken";
-dns.setDefaultResultOrder("ipv4first");
+const resend=new Resend(process.env.RESEND_API_KEY);
 const router=express.Router();
-const transporter = nodemailer.createTransport({
-      service: "smtp.gmail.com",
-      port: 465,
-      secure:true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      },
-      connectionTimeout: 10000, // 10 seconds timeout
-});
 router.post("/signup",async(req,res)=>{
     try {
         const {name,email,password}=req.body;
@@ -133,17 +124,21 @@ router.post("/forgot-password", async (req, res) => {
     user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; //15min
     await user.save();
     const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-    await transporter.sendMail({
-      from: `"CareerGuide AI" <${process.env.EMAIL_USER}>`,
+    const {data,error}=await resend.emails.send({
+      from: "CareerGuide AI <onboarding@resend.dev>",
       to: user.email,
       subject: "Password Reset",
       html: `<p>Click to reset password:</p>
              <a href="${resetLink}">${resetLink}</a>`
     });
-    res.json({ message: "Reset link sent to email" });
+    if (error) {
+      console.error("RESEND ERROR:", error);
+      return res.status(500).json({ message: error.message });
+    }
+    return res.json({ message: "Reset link sent to email" });
   } catch (err) {
     console.log("LOGIN ERROR:", err); 
-    res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Server error" });
   }
 });
 export default router;
