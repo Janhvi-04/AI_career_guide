@@ -3,8 +3,18 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
+import dns from "dns";
 import jwt from "jsonwebtoken";
+dns.setDefaultResultOrder("ipv4first");
 const router=express.Router();
+const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      },
+      connectionTimeout: 10000, // 10 seconds timeout
+});
 router.post("/signup",async(req,res)=>{
     try {
         const {name,email,password}=req.body;
@@ -109,14 +119,6 @@ router.post("/reset-password/:token", async (req, res) => {
   }
 });
 
-const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      },
-      connectionTimeout: 10000, // 10 seconds timeout
-});
 router.post("/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
