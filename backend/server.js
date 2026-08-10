@@ -12,7 +12,14 @@ const grokClient=new OpenAI({
   baseURL: "https://api.x.ai/v1",
 })
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: "*", 
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+app.options("*",cors());
 app.use(express.json());
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 

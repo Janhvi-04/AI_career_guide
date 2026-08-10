@@ -108,6 +108,17 @@ router.post("/reset-password/:token", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      },
+      connectionTimeout: 10000, // 10 seconds timeout
+      greetingTimeout: 5000,
+      socketTimeout: 10000,
+});
 router.post("/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
@@ -119,13 +130,6 @@ router.post("/forgot-password", async (req, res) => {
     user.resetPasswordToken = resetToken;
     user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; //15min
     await user.save();
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
     const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
     await transporter.sendMail({
       from: `"CareerGuide AI" <${process.env.EMAIL_USER}>`,
