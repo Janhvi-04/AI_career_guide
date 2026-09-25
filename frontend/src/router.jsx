@@ -1,6 +1,8 @@
 import React from "react";
+import Login from "./routes/login";
 import { createRouter, useRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
+import path from "node:path";
 function DefaultErrorComponent({ error, reset }) {
   const router = useRouter();
   return /* @__PURE__ */ React.createElement("div", { className: "flex min-h-screen items-center justify-center bg-background px-4" }, /* @__PURE__ */ React.createElement("div", { className: "max-w-md text-center" }, /* @__PURE__ */ React.createElement("div", { className: "mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10" }, /* @__PURE__ */ React.createElement(

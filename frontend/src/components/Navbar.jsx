@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { GraduationCap, Menu, X } from "lucide-react";
-
 const links = [
   { label: "Features", href: "#features" },
   { label: "How It Works", href: "#how" },

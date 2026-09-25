@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
@@ -9,6 +9,7 @@ export const Route = createFileRoute('/login')({
 })
 function Login() {
     const navigate=useNavigate();
+    const [loading,setLoading]=useState(false);
     const [form,setForm]=useState({
         email:"",
         password:""
@@ -19,6 +20,7 @@ function Login() {
     }
     const handleSubmit=async(e)=>{
         e.preventDefault();
+        setLoading(true);
         try {
             const res = await fetch(`${BASE_URL}/auth/login`, {
                 method: "POST",
@@ -30,6 +32,7 @@ function Login() {
             const data = await res.json();
             if (!res.ok) {
                 toast.error(data.message);
+                setLoading(false);
             } else {
                 toast.success("Login successful")
                 localStorage.setItem("token", data.token);
@@ -53,6 +56,7 @@ function Login() {
             }
         } catch (err) {
             toast.error("Server error");
+            setLoading(false);
         }
     }
   return (
@@ -71,19 +75,26 @@ function Login() {
                     <div>
                         <label className='text-sm font-medium'>Email</label>
                         <input type="email" name='email' onChange={handleChange}
-                        placeholder='Enter your email' required
+                        placeholder='Enter your email' required disabled={loading}
                         className='w-full mt-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400'/>
                     </div>
                     <div>
                         <label className='text-sm font-medium'>Password</label>
                         <input type="password" name='password' onChange={handleChange}
-                        placeholder='Enter your password' required
+                        placeholder='Enter your password' required disabled={loading}
                         className='w-full mt-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400'/>
                     </div>
                     <div className='text-right'>
                         <Link to='/forgot-password' className='text-sm text-blue-500 hover:underline'>Forgot Password?</Link>
                     </div>
-                    <button type='submit' className='w-full bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition'>Login</button>
+                    <button type='submit' disabled={loading} className='w-full bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed'>
+                        {loading ? (
+                            <>
+                            <Loader2 className='h-5 w-5 animate-spin'/>
+                            <span>Taking you there...</span>
+                            </>
+                        ) : ("Login")}
+                    </button>
                 </form>
                 <p className='text-sm text-center mt-6'>Don't have an account?{" "}
                     <a href="/signup" className='text-blue-600 font-medium hover:underline'>Sign up</a>

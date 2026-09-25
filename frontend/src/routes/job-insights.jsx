@@ -213,7 +213,6 @@ function MarketInsights() {
                         </div>
                       </td>
                     </tr>
-
                     <tr className="hover:bg-slate-50/50 transition-colors">
                       <td className="py-4 px-6 font-semibold text-emerald-900">Senior Authority</td>
                       <td className="py-4 px-6 font-mono font-bold text-emerald-600">{insights.salaryRanges?.seniorLevel}</td>
@@ -227,10 +226,8 @@ function MarketInsights() {
                 </table>
               </div>
             </div>
-
           </div>
         )}
-
       </div>
     </div>
   )

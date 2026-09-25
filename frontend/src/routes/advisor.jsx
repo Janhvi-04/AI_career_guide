@@ -15,7 +15,7 @@ function Advisor() {
       text: "Hello! I am your AI Career Advisor. I can help you analyze market trends, evaluate compensation spectrum benchmarks, map out your technical stack growth path, or prepare for upcoming placement rounds. What are we strategizing today?",
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
-  ])
+  ])        
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const chatBottomRef = useRef(null)
