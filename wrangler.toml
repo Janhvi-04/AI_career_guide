@@ -1,0 +1,10 @@
+name = "careerguide-ai"
+compatibility_date = "2025-09-24"
+compatibility_flags = ["nodejs_compat"]
+
+[site]
+bucket = "./frontend/dist/client"
+
+[build]
+command = "cd frontend && npm install --legacy-peer-deps && npm run build"
+cwd = "./frontend"
