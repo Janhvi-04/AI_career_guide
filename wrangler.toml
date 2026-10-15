@@ -1,0 +1,5 @@
+name = "careerguide-ai"
+compatibility_date = "2025-09-24"
+
+[pages]
+build_output_dir = "frontend/dist/client"
