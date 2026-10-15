@@ -1,5 +1,4 @@
 name = "careerguide-ai"
 compatibility_date = "2025-09-24"
 
-[site]
-bucket = "./frontend/dist/client"
+pages_build_output_dir = "./frontend/dist/client"
