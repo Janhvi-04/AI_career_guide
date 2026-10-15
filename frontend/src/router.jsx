@@ -1,5 +1,4 @@
 import React from "react";
-import Login from "./routes/login";
 import { createRouter, useRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 import path from "node:path";
