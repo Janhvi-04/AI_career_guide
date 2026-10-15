@@ -1,9 +1,0 @@
-name = "careerguide-ai"
-compatibility_date = "2025-09-24"
-
-[build]
-command = "cd frontend && npm install --legacy-peer-deps && npm run build"
-cwd = "frontend"
-
-[pages]
-build_output_dir = "dist/client"
