@@ -1,0 +1,11 @@
+name = "careerguide-ai"
+compatibility_date = "2026-10-12"
+
+main = "dist/server/server.js"
+
+[assets]
+directory = 'dist/client'
+
+[build]
+command = "npm run build"
+
