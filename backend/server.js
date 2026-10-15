@@ -369,8 +369,8 @@ app.post("/api/profile/analyze", async (req, res) => {
             trendingConcepts: ["Microservices Infrastructure", "Cloud Tooling Frameworks"]
           },
           curatedResources: [
-            { title: "MDN Web Engineering Docs", platform: "Mozilla Developer Network" },
-            { title: "Official Architecture Guides", platform: "Documentation" }
+            { title: "MDN Web Engineering Docs", platform: "Mozilla Developer Network", link: "https://developer.mozilla.org/" },
+            { title: "Official Architecture Guides", platform: "Documentation", link: "https://docs.microsoft.com/en-us/azure/architecture/" }
           ]
         }
       });

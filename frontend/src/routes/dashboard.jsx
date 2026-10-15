@@ -51,6 +51,7 @@ function normalizeResources(items) {
   return items.slice(0, 3).map((r, idx) => ({
     title: r.title,
     platform: r.platform || 'Documentation',
+    link: r.link,
     color: RESOURCE_COLORS[idx % RESOURCE_COLORS.length].color,
     tagStyle: RESOURCE_COLORS[idx % RESOURCE_COLORS.length].tagStyle,
   }))
